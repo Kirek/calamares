@@ -85,8 +85,15 @@ check_target_env_call( const std::string& command,
                    const std::string& stdin,
                    int timeout )
 {
-    int ec = target_env_call( command, stdin, timeout );
-    return _handle_check_target_env_call_error( ec, QString::fromStdString( command ) );
+    QString output;
+    int ec = CalamaresUtils::System::instance()->
+             targetEnvOutput( QString::fromStdString( command ),
+                              output,
+                              QString(),
+                              QString::fromStdString( stdin ),
+                              timeout );
+
+    return _handle_check_target_env_call_error( ec, QString::fromStdString( command ), output );
 }
 
 
@@ -95,7 +102,21 @@ check_target_env_call( const bp::list& args,
                    const std::string& stdin,
                    int timeout )
 {
-    int ec = target_env_call( args, stdin, timeout );
+    QStringList list;
+    for ( int i = 0; i < bp::len( args ); ++i )
+    {
+        list.append( QString::fromStdString(
+            bp::extract< std::string >( args[ i ] ) ) );
+    }
+
+    QString output;
+    int ec = CalamaresUtils::System::instance()->
+             targetEnvOutput( list,
+                              output,
+                              QString(),
+                              QString::fromStdString( stdin ),
+                              timeout );
+
     if ( !ec )
         return ec;
 
@@ -106,7 +127,7 @@ check_target_env_call( const bp::list& args,
             bp::extract< std::string >( args[ i ] ) ) );
     }
 
-    return _handle_check_target_env_call_error( ec, failedCmdList.join( ' ' ) );
+    return _handle_check_target_env_call_error( ec, failedCmdList.join( ' ' ), output );
 }
 
 
@@ -122,7 +143,7 @@ check_target_env_output( const std::string& command,
                               QString(),
                               QString::fromStdString( stdin ),
                               timeout );
-    _handle_check_target_env_call_error( ec, QString::fromStdString( command ) );
+    _handle_check_target_env_call_error( ec, QString::fromStdString( command ), output );
     return output.toStdString();
 }
 
@@ -146,21 +167,22 @@ check_target_env_output( const bp::list& args,
                               QString(),
                               QString::fromStdString( stdin ),
                               timeout );
-    _handle_check_target_env_call_error( ec, list.join( ' ' ) );
+    _handle_check_target_env_call_error( ec, list.join( ' ' ), output );
     return output.toStdString();
 }
 
 
 int
-_handle_check_target_env_call_error( int ec, const QString& cmd )
+_handle_check_target_env_call_error( int ec, const QString& cmd, const QString& programOutput )
 {
     if ( !ec )
         return ec;
 
     QString raise = QString( "import subprocess\n"
-                             "raise subprocess.CalledProcessError(%1,\"%2\")" )
+                             "raise subprocess.CalledProcessError(%1,\"%2\",\"%3\")" )
                         .arg( ec )
-                        .arg( cmd );
+                        .arg( cmd )
+                        .arg( programOutput );
     bp::exec( raise.toStdString().c_str() );
     bp::throw_error_already_set();
     return ec;

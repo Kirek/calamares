@@ -60,7 +60,7 @@ std::string check_target_env_output( const boost::python::list& args,
 
 std::string obscure( const std::string& string );
 
-inline int _handle_check_target_env_call_error( int ec, const QString& cmd );
+inline int _handle_check_target_env_call_error( int ec, const QString& cmd, const QString& programOutput );
 
 void debug( const std::string& s );
 
